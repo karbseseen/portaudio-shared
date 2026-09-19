@@ -1,0 +1,69 @@
+name: Build Shared PortAudio Library
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            os: ubuntu-latest
+            artifact_name: portaudio-linux-x64
+            cmake_flags: ""
+          - name: macOS Universal (arm64 + x86_64)
+            os: macos-latest
+            artifact_name: portaudio-macos-universal
+            cmake_flags: '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
+          - name: Windows x64
+            os: windows-latest
+            artifact_name: portaudio-windows-x64
+            cmake_flags: '-A x64'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            libpulse-dev
+
+      - name: Configure CMake
+        run: >
+          cmake -B build -S portaudio
+          -DCMAKE_BUILD_TYPE=Release
+          -DPA_BUILD_SHARED_LIBS=ON
+          -DBUILD_SHARED_LIBS=ON
+          -DPA_BUILD_TESTS=OFF
+          -DPA_BUILD_EXAMPLES=OFF
+          ${{ matrix.cmake_flags }}
+
+      - name: Build Release
+        run: cmake --build build --config Release --parallel
+
+      - name: Install to staging directory
+        run: cmake --install build --prefix "${{ github.workspace }}/dist/${{ matrix.artifact_name }}" --config Release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ github.workspace }}/dist/${{ matrix.artifact_name }}
+          if-no-files-found: error
+          overwrite: true
