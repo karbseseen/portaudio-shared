@@ -22,7 +22,7 @@ jobs:
           - name: macOS Universal (arm64 + x86_64)
             os: macos-latest
             artifact_name: portaudio-macos-universal
-            cmake_flags: '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
+            cmake_flags: '-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"'
           - name: Windows x64
             os: windows-latest
             artifact_name: portaudio-windows-x64
